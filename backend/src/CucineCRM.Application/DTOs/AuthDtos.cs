@@ -17,7 +17,8 @@ public record UtenteDto(
     string Email,
     RuoloUtente Ruolo,
     bool Attivo,
-    int? AgenteId
+    int? AgenteId,
+    int? ClienteId
 );
 
 public record CreaUtenteDto(
@@ -26,7 +27,8 @@ public record CreaUtenteDto(
     string Email,
     string Password,
     RuoloUtente Ruolo,
-    int? AgenteId
+    int? AgenteId,
+    int? ClienteId = null
 );
 
 public record CambiaPasswordDto(string PasswordAttuale, string NuovaPassword);

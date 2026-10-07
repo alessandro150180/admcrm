@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth, isSoloDirezione } from "@/lib/auth-context";
+import { useAuth, isSoloDirezione, isCliente } from "@/lib/auth-context";
 
 interface VoceMenu {
   href: string;
@@ -25,6 +25,9 @@ const VOCI: VoceMenu[] = [
   { href: "/impostazioni", label: "Impostazioni" },
 ];
 
+// Un account Cliente vede solo queste voci: il proprio fatturato, i propri ordini, le comunicazioni e il cambio password.
+const VOCI_CLIENTE = ["/dashboard", "/ordini", "/comunicazioni", "/impostazioni"];
+
 export function Sidebar() {
   const pathname = usePathname();
   const { utente, logout } = useAuth();
@@ -38,7 +41,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
-        {VOCI.filter((v) => !v.visibile || v.visibile(utente?.ruolo)).map((voce) => {
+        {VOCI.filter((v) => (isCliente(utente?.ruolo) ? VOCI_CLIENTE.includes(v.href) : !v.visibile || v.visibile(utente?.ruolo))).map((voce) => {
           const attivo = pathname === voce.href || pathname.startsWith(`${voce.href}/`);
           return (
             <Link

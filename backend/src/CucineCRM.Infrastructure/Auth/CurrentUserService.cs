@@ -42,6 +42,15 @@ public class CurrentUserService : ICurrentUserService
         }
     }
 
+    public int? ClienteId
+    {
+        get
+        {
+            var value = User?.FindFirst("clienteId")?.Value;
+            return int.TryParse(value, out var id) ? id : null;
+        }
+    }
+
     public int? AgenteId
     {
         get

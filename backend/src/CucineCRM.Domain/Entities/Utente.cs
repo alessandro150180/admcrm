@@ -20,6 +20,10 @@ public class Utente : BaseEntity
     public int? AgenteId { get; set; }
     public Agente? Agente { get; set; }
 
+    // FK opzionale: valorizzata solo per utenti con ruolo Cliente (account del cliente finale)
+    public int? ClienteId { get; set; }
+    public Cliente? Cliente { get; set; }
+
     // Token OAuth Google Calendar (nulli finché l'utente non collega il proprio account)
     public string? GoogleAccessToken { get; set; }
     public string? GoogleRefreshToken { get; set; }

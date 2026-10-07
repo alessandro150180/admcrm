@@ -170,10 +170,14 @@ public class DashboardService : IDashboardService
         int? agenteId, int? clienteId, IReadOnlyList<int>? fornitoreIds, CancellationToken ct)
     {
         var agentiVisibili = await _scoping.GetAgentiVisibiliAsync(ct);
+        var clienteVincolato = await _scoping.GetClienteVincolatoAsync(ct);
 
         var query = _unitOfWork.Ordini.Query();
 
-        if (agentiVisibili is not null)
+        // Un account Cliente vede solo il proprio fatturato (tutti i fornitori), qualunque filtro passi.
+        if (clienteVincolato.HasValue)
+            query = query.Where(o => o.ClienteId == clienteVincolato.Value);
+        else if (agentiVisibili is not null)
             query = query.Where(o => agentiVisibili.Contains(o.Cliente.AgenteId));
 
         if (agenteId.HasValue)

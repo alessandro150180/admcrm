@@ -23,6 +23,14 @@ public class UtenteConfiguration : IEntityTypeConfiguration<Utente>
             .HasForeignKey(u => u.AgenteId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(u => u.Cliente)
+            .WithMany()
+            .HasForeignKey(u => u.ClienteId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Un cliente ha al massimo un account attivo
+        builder.HasIndex(u => u.ClienteId).IsUnique().HasFilter("\"ClienteId\" IS NOT NULL AND \"Eliminato\" = false");
+
         // Indice per velocizzare i filtri per ruolo (usati spesso nello scoping dei permessi)
         builder.HasIndex(u => u.Ruolo);
     }

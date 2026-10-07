@@ -21,11 +21,15 @@ public class OrdineService : IOrdineService
     public async Task<PagedResult<OrdineDto>> GetListaAsync(FiltriListaDto filtri, CancellationToken ct = default)
     {
         var agentiVisibili = await _scoping.GetAgentiVisibiliAsync(ct);
+        var clienteVincolato = await _scoping.GetClienteVincolatoAsync(ct);
 
         var query = _unitOfWork.Ordini.Query();
 
         // Scoping per ruolo, sempre applicato prima di qualunque altro filtro (stesso pattern di ClienteService).
-        if (agentiVisibili is not null)
+        // Un account Cliente vede solo i propri ordini (per tutti i fornitori), non quelli di un agente.
+        if (clienteVincolato.HasValue)
+            query = query.Where(o => o.ClienteId == clienteVincolato.Value);
+        else if (agentiVisibili is not null)
             query = query.Where(o => agentiVisibili.Contains(o.Cliente.AgenteId));
 
         if (filtri.AgenteId.HasValue)
@@ -61,7 +65,12 @@ public class OrdineService : IOrdineService
     {
         var (ordine, cliente) = await CaricaOrdineEClienteAsync(ordineId, ct);
 
-        if (!await _scoping.PuoAccedereAdAgenteAsync(cliente.AgenteId, ct))
+        var clienteVincolato = await _scoping.GetClienteVincolatoAsync(ct);
+        var haAccesso = clienteVincolato.HasValue
+            ? ordine.ClienteId == clienteVincolato.Value
+            : await _scoping.PuoAccedereAdAgenteAsync(cliente.AgenteId, ct);
+
+        if (!haAccesso)
             throw new ForbiddenAccessException("Non hai accesso a questo ordine.");
 
         return await MapToDtoAsync(ordine, cliente.RagioneSociale, ct);

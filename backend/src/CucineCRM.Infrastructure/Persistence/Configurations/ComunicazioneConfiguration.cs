@@ -13,6 +13,7 @@ public class ComunicazioneConfiguration : IEntityTypeConfiguration<Comunicazione
         builder.Property(c => c.Descrizione).HasMaxLength(2000);
         builder.Property(c => c.NomeFile).IsRequired().HasMaxLength(260);
         builder.Property(c => c.TipoContenuto).IsRequired().HasMaxLength(150);
+        builder.Property(c => c.Destinatari).HasConversion<string>().HasMaxLength(20);
 
         builder.HasOne(c => c.UtentePubblicazione)
             .WithMany(u => u.Comunicazioni)

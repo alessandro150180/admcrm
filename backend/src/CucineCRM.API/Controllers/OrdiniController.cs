@@ -8,7 +8,7 @@ namespace CucineCRM.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = "TuttiIRuoli")]
+[Authorize(Policy = "ConClienti")]
 public class OrdiniController : ControllerBase
 {
     private readonly IOrdineService _ordineService;
@@ -34,6 +34,7 @@ public class OrdiniController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "TuttiIRuoli")]
     public async Task<IActionResult> Crea([FromBody] CreaOrdineDto request, CancellationToken ct)
     {
         var result = await _ordineService.CreaAsync(request, ct);
@@ -42,6 +43,7 @@ public class OrdiniController : ControllerBase
 
     /// <summary>Aggiorna lo stato dell'ordine (es. Confermato, InProduzione, Spedito, Consegnato, Annullato).</summary>
     [HttpPatch("{id:int}/stato")]
+    [Authorize(Policy = "TuttiIRuoli")]
     public async Task<IActionResult> AggiornaStato(int id, [FromBody] AggiornaStatoOrdineDto request, CancellationToken ct)
     {
         var result = await _ordineService.AggiornaStatoAsync(id, request, ct);

@@ -5,6 +5,7 @@ import type {
   ClienteDettaglioDto,
   ClienteDto,
   ComunicazioneDto,
+  DestinatariComunicazione,
   DashboardKpiDto,
   FornitoreDto,
   ImportazioneRisultatoDto,
@@ -268,13 +269,16 @@ export const api = {
   comunicazioni: {
     lista: () => apiFetch<ComunicazioneDto[]>("/api/comunicazioni"),
     scarica: (id: number) => apiFetchBlob(`/api/comunicazioni/${id}/download`),
-    crea: (file: File, titolo: string, descrizione: string) => {
+    crea: (file: File, titolo: string, descrizione: string, destinatari: DestinatariComunicazione) => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("titolo", titolo);
+      formData.append("destinatari", destinatari);
       if (descrizione) formData.append("descrizione", descrizione);
       return apiFetch<ComunicazioneDto>("/api/comunicazioni", { method: "POST", body: formData });
     },
+    aggiornaDestinatari: (id: number, destinatari: DestinatariComunicazione) =>
+      apiFetch<void>(`/api/comunicazioni/${id}/destinatari`, { method: "PATCH", body: JSON.stringify({ destinatari }) }),
     elimina: (id: number) => apiFetch<void>(`/api/comunicazioni/${id}`, { method: "DELETE" }),
   },
 

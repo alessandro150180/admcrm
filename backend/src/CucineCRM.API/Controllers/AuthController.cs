@@ -40,7 +40,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Cambio password per l'utente attualmente autenticato.</summary>
     [HttpPost("cambia-password")]
-    [Authorize(Policy = "TuttiIRuoli")]
+    [Authorize(Policy = "ConClienti")]
     public async Task<IActionResult> CambiaPassword([FromBody] CambiaPasswordDto request, CancellationToken ct)
     {
         var utenteId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -52,7 +52,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Restituisce i dati dell'utente autenticato, utile al frontend dopo il login/refresh pagina.</summary>
     [HttpGet("me")]
-    [Authorize(Policy = "TuttiIRuoli")]
+    [Authorize(Policy = "ConClienti")]
     public IActionResult Me()
     {
         return Ok(new

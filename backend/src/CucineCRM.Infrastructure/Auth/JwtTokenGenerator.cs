@@ -32,6 +32,9 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         if (utente.AgenteId.HasValue)
             claims.Add(new Claim("agenteId", utente.AgenteId.Value.ToString()));
 
+        if (utente.ClienteId.HasValue)
+            claims.Add(new Claim("clienteId", utente.ClienteId.Value.ToString()));
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

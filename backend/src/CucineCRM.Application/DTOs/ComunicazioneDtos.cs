@@ -1,3 +1,5 @@
+using CucineCRM.Domain.Enums;
+
 namespace CucineCRM.Application.DTOs;
 
 /// <summary>Metadati di una comunicazione (circolare/PDF/Excel): non include il contenuto binario,
@@ -10,5 +12,8 @@ public record ComunicazioneDto(
     string TipoContenuto,
     long DimensioneByte,
     DateTime DataPubblicazione,
-    string UtentePubblicazioneNomeCompleto
+    string UtentePubblicazioneNomeCompleto,
+    DestinatariComunicazione Destinatari
 );
+
+public record AggiornaDestinatariComunicazioneDto(DestinatariComunicazione Destinatari);

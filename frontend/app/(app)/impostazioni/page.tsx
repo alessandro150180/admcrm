@@ -4,8 +4,11 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api";
 import { Badge, Button, Card, ErrorBlock, Field, Input, PageHeader } from "@/components/ui";
 import { messaggioErrore } from "@/lib/format";
+import { isCliente, useAuth } from "@/lib/auth-context";
 
 export default function ImpostazioniPage() {
+  const { utente } = useAuth();
+  const mostraGoogle = !isCliente(utente?.ruolo);
   const [googleCollegato, setGoogleCollegato] = useState<boolean | null>(null);
   const [connettendo, setConnettendo] = useState(false);
   const [erroreGoogle, setErroreGoogle] = useState<string | null>(null);
@@ -17,8 +20,9 @@ export default function ImpostazioniPage() {
   const [inviandoCambio, setInviandoCambio] = useState(false);
 
   useEffect(() => {
+    if (!mostraGoogle) return;
     api.googleCalendar.stato().then((r) => setGoogleCollegato(r.collegato)).catch(() => setGoogleCollegato(false));
-  }, []);
+  }, [mostraGoogle]);
 
   async function handleConnetti() {
     setConnettendo(true);
@@ -53,6 +57,7 @@ export default function ImpostazioniPage() {
     <div className="max-w-lg space-y-6">
       <PageHeader title="Impostazioni" />
 
+      {mostraGoogle && (
       <Card>
         <p className="mb-1 text-sm font-medium text-zinc-700">Google Calendar</p>
         <p className="mb-3 text-sm text-zinc-500">
@@ -69,6 +74,7 @@ export default function ImpostazioniPage() {
           </Button>
         )}
       </Card>
+      )}
 
       <Card>
         <p className="mb-3 text-sm font-medium text-zinc-700">Cambia password</p>

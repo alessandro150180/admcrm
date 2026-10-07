@@ -48,9 +48,26 @@ public class DataScopingService : IDataScopingService
                     return new List<int> { proprioAgenteId };
                 }
 
+            case RuoloUtente.Cliente:
+                return new List<int>(); // un cliente non vede mai dati di agenti: solo il proprio fatturato, via GetClienteVincolatoAsync
+
             default:
                 return new List<int>(); // ruolo sconosciuto: nessuna visibilità per sicurezza
         }
+    }
+
+    public Task<int?> GetClienteVincolatoAsync(CancellationToken ct = default)
+    {
+        if (!_currentUser.IsAuthenticated)
+            throw new AuthenticationException("Utente non autenticato.");
+
+        if (_currentUser.Ruolo != RuoloUtente.Cliente)
+            return Task.FromResult<int?>(null);
+
+        var clienteId = _currentUser.ClienteId
+            ?? throw new ValidationAppException("L'utente Cliente non è collegato a nessun record Cliente.");
+
+        return Task.FromResult<int?>(clienteId);
     }
 
     public async Task<bool> PuoAccedereAdAgenteAsync(int agenteId, CancellationToken ct = default)

@@ -5,7 +5,9 @@ export type RuoloUtente =
   | "Amministratore"
   | "DirettoreCommerciale"
   | "AreaManager"
-  | "Agente";
+  | "Agente"
+  | "Visualizzatore"
+  | "Cliente";
 
 export type StatoOrdine =
   | "InAttesa"
@@ -37,6 +39,7 @@ export interface UtenteDto {
   ruolo: RuoloUtente;
   attivo: boolean;
   agenteId: number | null;
+  clienteId: number | null;
 }
 
 export interface LoginResponseDto {
@@ -182,6 +185,8 @@ export interface ProvvigioneClienteDto {
   differenzaAdmAgente: number;
 }
 
+export type DestinatariComunicazione = "Tutti" | "SoloAgenti" | "SoloClienti";
+
 export interface ComunicazioneDto {
   id: number;
   titolo: string;
@@ -191,6 +196,7 @@ export interface ComunicazioneDto {
   dimensioneByte: number;
   dataPubblicazione: string;
   utentePubblicazioneNomeCompleto: string;
+  destinatari: DestinatariComunicazione;
 }
 
 export interface ImportazioneRisultatoDto {

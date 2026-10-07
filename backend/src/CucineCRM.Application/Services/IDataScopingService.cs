@@ -15,6 +15,12 @@ public interface IDataScopingService
     /// </summary>
     Task<IReadOnlyList<int>?> GetAgentiVisibiliAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Per gli account Cliente restituisce l'Id del solo cliente di cui possono vedere ordini e
+    /// fatturato; per tutti gli altri ruoli null (nessun vincolo per cliente, vale lo scoping per agente).
+    /// </summary>
+    Task<int?> GetClienteVincolatoAsync(CancellationToken ct = default);
+
     /// <summary>True se l'utente corrente può accedere ai dati di uno specifico agente.</summary>
     Task<bool> PuoAccedereAdAgenteAsync(int agenteId, CancellationToken ct = default);
 }

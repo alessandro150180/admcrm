@@ -25,5 +25,6 @@ public interface ICurrentUserService
     int? UtenteId { get; }
     RuoloUtente? Ruolo { get; }
     int? AgenteId { get; } // valorizzato solo se l'utente è collegato a un Agente
+    int? ClienteId { get; } // valorizzato solo per gli account Cliente
     bool IsAuthenticated { get; }
 }

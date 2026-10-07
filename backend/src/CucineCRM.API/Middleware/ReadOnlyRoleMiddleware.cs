@@ -32,7 +32,7 @@ public class ReadOnlyRoleMiddleware
 
         var isPercorsoConsentito = PercorsiConsentiti.Contains(context.Request.Path.Value, StringComparer.OrdinalIgnoreCase);
 
-        if (isScrittura && !isPercorsoConsentito && context.User.IsInRole("Visualizzatore"))
+        if (isScrittura && !isPercorsoConsentito && (context.User.IsInRole("Visualizzatore") || context.User.IsInRole("Cliente")))
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             context.Response.ContentType = "application/json";
@@ -40,7 +40,7 @@ public class ReadOnlyRoleMiddleware
             {
                 title = "Accesso negato",
                 status = StatusCodes.Status403Forbidden,
-                detail = "L'account Visualizzatore ha accesso di sola lettura: nessuna modifica è consentita."
+                detail = "Questo account ha accesso di sola lettura: nessuna modifica è consentita."
             }));
             return;
         }

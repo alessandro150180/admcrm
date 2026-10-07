@@ -65,9 +65,14 @@ export function isSolaLettura(ruolo: string | undefined) {
   return ruolo === "Visualizzatore";
 }
 
-/** Vero se il ruolo può creare/modificare/eliminare dati (tutti tranne il Visualizzatore). */
+/** Account di un cliente finale: vede solo il proprio fatturato e i propri ordini, in sola lettura. */
+export function isCliente(ruolo: string | undefined) {
+  return ruolo === "Cliente";
+}
+
+/** Vero se il ruolo può creare/modificare/eliminare dati (tutti tranne Visualizzatore e Cliente). */
 export function puoModificare(ruolo: string | undefined) {
-  return !isSolaLettura(ruolo);
+  return !isSolaLettura(ruolo) && !isCliente(ruolo);
 }
 
 /** Quota di provvigione riservata alla Ditta ADM: dato riservato alla direzione, invisibile agli agenti. */

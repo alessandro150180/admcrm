@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { api, scaricaBlob } from "@/lib/api";
-import type { ComunicazioneDto } from "@/lib/types";
-import { Button, Card, EmptyState, ErrorBlock, Field, Input, LoadingBlock, PageHeader } from "@/components/ui";
+import type { ComunicazioneDto, DestinatariComunicazione } from "@/lib/types";
+import { Button, Card, EmptyState, ErrorBlock, Field, Input, LoadingBlock, PageHeader, Select } from "@/components/ui";
 import { formattaDataOra, formattaDimensioneFile, messaggioErrore } from "@/lib/format";
 import { isSoloDirezione, useAuth } from "@/lib/auth-context";
 
@@ -13,6 +13,12 @@ const ICONE_PER_ESTENSIONE: Record<string, string> = {
   xls: "📊",
   doc: "📝",
   docx: "📝",
+};
+
+const ETICHETTE_DESTINATARI: Record<DestinatariComunicazione, string> = {
+  Tutti: "Agenti e clienti",
+  SoloAgenti: "Solo agenti",
+  SoloClienti: "Solo clienti",
 };
 
 function estensione(nomeFile: string): string {
@@ -29,6 +35,7 @@ export default function ComunicazioniPage() {
 
   const [titolo, setTitolo] = useState("");
   const [descrizione, setDescrizione] = useState("");
+  const [destinatari, setDestinatari] = useState<DestinatariComunicazione>("Tutti");
   const [file, setFile] = useState<File | null>(null);
   const [inviando, setInviando] = useState(false);
 
@@ -58,9 +65,10 @@ export default function ComunicazioniPage() {
     setErrore(null);
     setInviando(true);
     try {
-      await api.comunicazioni.crea(file, titolo.trim(), descrizione.trim());
+      await api.comunicazioni.crea(file, titolo.trim(), descrizione.trim(), destinatari);
       setTitolo("");
       setDescrizione("");
+      setDestinatari("Tutti");
       setFile(null);
       carica();
     } catch (err) {
@@ -83,6 +91,16 @@ export default function ComunicazioniPage() {
     }
   }
 
+  async function handleCambiaDestinatari(c: ComunicazioneDto, nuovi: DestinatariComunicazione) {
+    setErrore(null);
+    try {
+      await api.comunicazioni.aggiornaDestinatari(c.id, nuovi);
+      setElenco((prev) => prev?.map((x) => (x.id === c.id ? { ...x, destinatari: nuovi } : x)) ?? prev);
+    } catch (err) {
+      setErrore(messaggioErrore(err));
+    }
+  }
+
   async function handleElimina(c: ComunicazioneDto) {
     const conferma = window.confirm(`Eliminare la comunicazione "${c.titolo}"? L'operazione non è reversibile dall'interfaccia.`);
     if (!conferma) return;
@@ -101,7 +119,7 @@ export default function ComunicazioniPage() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Comunicazioni" subtitle="Circolari, PDF e file Excel condivisi con tutta la rete vendita" />
+      <PageHeader title="Comunicazioni" subtitle="Circolari, PDF e file Excel condivisi con la rete vendita e i clienti" />
 
       {errore && <div className="mb-4"><ErrorBlock message={errore} /></div>}
 
@@ -119,6 +137,13 @@ export default function ComunicazioniPage() {
                 value={descrizione}
                 onChange={(e) => setDescrizione(e.target.value)}
               />
+            </Field>
+            <Field label="Destinatari *">
+              <Select value={destinatari} onChange={(e) => setDestinatari(e.target.value as DestinatariComunicazione)} className="w-56">
+                {(Object.keys(ETICHETTE_DESTINATARI) as DestinatariComunicazione[]).map((d) => (
+                  <option key={d} value={d}>{ETICHETTE_DESTINATARI[d]}</option>
+                ))}
+              </Select>
             </Field>
             <Field label="File (PDF, Excel o Word — max 20 MB) *">
               <input
@@ -146,6 +171,20 @@ export default function ComunicazioniPage() {
                   <div>
                     <p className="font-medium text-zinc-900">{c.titolo}</p>
                     {c.descrizione && <p className="mt-0.5 text-sm text-zinc-600">{c.descrizione}</p>}
+                    {puoPubblicare && (
+                      <div className="mt-2 flex items-center gap-2 text-xs text-zinc-500">
+                        Destinatari:
+                        <Select
+                          value={c.destinatari}
+                          onChange={(e) => handleCambiaDestinatari(c, e.target.value as DestinatariComunicazione)}
+                          className="w-44 !py-1 text-xs"
+                        >
+                          {(Object.keys(ETICHETTE_DESTINATARI) as DestinatariComunicazione[]).map((d) => (
+                            <option key={d} value={d}>{ETICHETTE_DESTINATARI[d]}</option>
+                          ))}
+                        </Select>
+                      </div>
+                    )}
                     <p className="mt-1 text-xs text-zinc-400">
                       {c.nomeFile} · {formattaDimensioneFile(c.dimensioneByte)} · pubblicato da {c.utentePubblicazioneNomeCompleto} il {formattaDataOra(c.dataPubblicazione)}
                     </p>

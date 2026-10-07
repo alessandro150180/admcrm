@@ -1,4 +1,5 @@
 using CucineCRM.Domain.Common;
+using CucineCRM.Domain.Enums;
 
 namespace CucineCRM.Domain.Entities;
 
@@ -16,6 +17,9 @@ public class Comunicazione : BaseEntity
     public string TipoContenuto { get; set; } = string.Empty; // MIME type, es. "application/pdf"
     public long DimensioneByte { get; set; }
     public byte[] Contenuto { get; set; } = Array.Empty<byte>();
+
+    // Chi può vederla e scaricarla (la direzione e il Visualizzatore vedono sempre tutto).
+    public DestinatariComunicazione Destinatari { get; set; } = DestinatariComunicazione.Tutti;
 
     public int UtentePubblicazioneId { get; set; }
     public Utente UtentePubblicazione { get; set; } = null!;

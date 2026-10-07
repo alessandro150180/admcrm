@@ -6,7 +6,7 @@ namespace CucineCRM.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = "TuttiIRuoli")]
+[Authorize(Policy = "ConClienti")]
 public class DashboardController : ControllerBase
 {
     private readonly IDashboardService _dashboardService;
@@ -40,6 +40,7 @@ public class DashboardController : ControllerBase
 
     /// <summary>Fatturato e provvigione per cliente: portafoglio di un agente, o singolo cliente se clienteId è specificato.</summary>
     [HttpGet("provvigioni")]
+    [Authorize(Policy = "TuttiIRuoli")] // le provvigioni non sono visibili ai clienti
     public async Task<IActionResult> GetProvvigioni(
         [FromQuery] int[] mesi, [FromQuery] int anno, [FromQuery] int? agenteId, [FromQuery] int? clienteId,
         [FromQuery] int[]? fornitoreIds, CancellationToken ct)

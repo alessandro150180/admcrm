@@ -7,7 +7,7 @@ namespace CucineCRM.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = "TuttiIRuoli")]
+[Authorize(Policy = "ConClienti")]
 public class FornitoriController : ControllerBase
 {
     private readonly IFornitoreService _fornitoreService;

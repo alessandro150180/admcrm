@@ -2,6 +2,7 @@ using CucineCRM.Application.Common;
 using CucineCRM.Application.DTOs;
 using CucineCRM.Application.Interfaces;
 using CucineCRM.Domain.Entities;
+using CucineCRM.Domain.Enums;
 
 namespace CucineCRM.Application.Services;
 
@@ -51,6 +52,18 @@ public class AuthService : IAuthService
         if (esistente)
             throw new ValidationAppException($"Esiste già un utente con email '{request.Email}'.");
 
+        if (request.Ruolo == RuoloUtente.Cliente)
+        {
+            if (request.ClienteId is null)
+                throw new ValidationAppException("Un account Cliente deve essere collegato a un cliente.");
+
+            if (await _unitOfWork.Clienti.GetByIdAsync(request.ClienteId.Value, ct) is null)
+                throw new NotFoundException(nameof(Cliente), request.ClienteId.Value);
+
+            if ((await _unitOfWork.Utenti.FindAsync(u => u.ClienteId == request.ClienteId, ct)).Any())
+                throw new ValidationAppException("Questo cliente ha già un account.");
+        }
+
         var utente = new Utente
         {
             Nome = request.Nome,
@@ -59,6 +72,7 @@ public class AuthService : IAuthService
             PasswordHash = _passwordHasher.Hash(request.Password),
             Ruolo = request.Ruolo,
             AgenteId = request.AgenteId,
+            ClienteId = request.Ruolo == RuoloUtente.Cliente ? request.ClienteId : null,
             Attivo = true
         };
 
@@ -82,5 +96,5 @@ public class AuthService : IAuthService
     }
 
     private static UtenteDto MapToDto(Utente u) =>
-        new(u.Id, u.Nome, u.Cognome, u.Email, u.Ruolo, u.Attivo, u.AgenteId);
+        new(u.Id, u.Nome, u.Cognome, u.Email, u.Ruolo, u.Attivo, u.AgenteId, u.ClienteId);
 }

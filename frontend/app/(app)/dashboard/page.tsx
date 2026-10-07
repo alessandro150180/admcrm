@@ -9,7 +9,7 @@ import { BarChart, LegendaAnni } from "@/components/BarChart";
 import { MultiSelectMesi } from "@/components/MultiSelectMesi";
 import { MultiSelectFornitori } from "@/components/MultiSelectFornitori";
 import { formattaPercentuale, formattaValuta, messaggioErrore, NOMI_MESI } from "@/lib/format";
-import { useAuth, puoVedereQuotaAdm } from "@/lib/auth-context";
+import { useAuth, puoVedereQuotaAdm, isCliente } from "@/lib/auth-context";
 
 const ORA = new Date();
 const ANNI = Array.from({ length: 5 }, (_, i) => ORA.getFullYear() - i);
@@ -17,6 +17,8 @@ const ANNI = Array.from({ length: 5 }, (_, i) => ORA.getFullYear() - i);
 export default function DashboardPage() {
   const { utente } = useAuth();
   const vedeQuotaAdm = puoVedereQuotaAdm(utente?.ruolo);
+  // Un account Cliente vede solo il proprio fatturato: niente filtri agente/cliente, provvigioni o analisi per agente.
+  const soloProprioFatturato = isCliente(utente?.ruolo);
   const [mesi, setMesi] = useState<number[]>([ORA.getMonth() + 1]);
   const [anno, setAnno] = useState(ORA.getFullYear());
   const [agenteId, setAgenteId] = useState<number | "">("");
@@ -37,16 +39,17 @@ export default function DashboardPage() {
 
   // Elenco agenti e fornitori per i filtri: caricati una sola volta.
   useEffect(() => {
-    api.agenti.lista().then(setAgenti).catch((err) => setErrore(messaggioErrore(err)));
+    if (!soloProprioFatturato) api.agenti.lista().then(setAgenti).catch((err) => setErrore(messaggioErrore(err)));
     api.fornitori.lista().then(setFornitori).catch((err) => setErrore(messaggioErrore(err)));
-  }, []);
+  }, [soloProprioFatturato]);
 
   // Elenco clienti per il filtro "Cliente": ristretto all'agente selezionato, se presente.
   useEffect(() => {
+    if (soloProprioFatturato) return;
     api.clienti.lista({ dimensione: 500, agenteId: agenteId || undefined })
       .then((r) => setClienti(r.elementi))
       .catch((err) => setErrore(messaggioErrore(err)));
-  }, [agenteId]);
+  }, [agenteId, soloProprioFatturato]);
 
   // Se cambio l'agente, la scelta di cliente precedente potrebbe non appartenergli più.
   function handleCambiaAgente(valore: string) {
@@ -70,7 +73,9 @@ export default function DashboardPage() {
     Promise.all([
       api.dashboard.kpi(mesi, anno, agenteId || undefined, clienteId || undefined, fornitoreIdsAttivi),
       api.dashboard.fatturatoMensile(anno, agenteId || undefined, clienteId || undefined, fornitoreIdsAttivi),
-      api.dashboard.provvigioni(mesi, anno, agenteId || undefined, clienteId || undefined, fornitoreIdsAttivi),
+      soloProprioFatturato
+        ? Promise.resolve([] as ProvvigioneClienteDto[])
+        : api.dashboard.provvigioni(mesi, anno, agenteId || undefined, clienteId || undefined, fornitoreIdsAttivi),
     ])
       .then(([kpiRisposta, serieRisposta, provvigioniRisposta]) => {
         if (annullato) return;
@@ -84,7 +89,7 @@ export default function DashboardPage() {
     return () => {
       annullato = true;
     };
-  }, [mesi, anno, agenteId, clienteId, fornitoreIds]);
+  }, [mesi, anno, agenteId, clienteId, fornitoreIds, soloProprioFatturato]);
 
   // Confronto anno su anno nel grafico: anno selezionato + i due precedenti (quando ci sono dati).
   const anniConfronto = [anno, anno - 1, anno - 2];
@@ -150,14 +155,18 @@ export default function DashboardPage() {
         subtitle="Andamento commerciale della rete vendita"
         actions={
           <>
-            <Select value={agenteId} onChange={(e) => handleCambiaAgente(e.target.value)} className="w-44">
-              <option value="">Tutti gli agenti</option>
-              {agenti.map((a) => <option key={a.id} value={a.id}>{a.nome} {a.cognome}</option>)}
-            </Select>
-            <Select value={clienteId} onChange={(e) => setClienteId(e.target.value ? Number(e.target.value) : "")} className="w-48">
-              <option value="">Tutto il portafoglio</option>
-              {clienti.map((c) => <option key={c.id} value={c.id}>{c.ragioneSociale}</option>)}
-            </Select>
+            {!soloProprioFatturato && (
+              <>
+                <Select value={agenteId} onChange={(e) => handleCambiaAgente(e.target.value)} className="w-44">
+                  <option value="">Tutti gli agenti</option>
+                  {agenti.map((a) => <option key={a.id} value={a.id}>{a.nome} {a.cognome}</option>)}
+                </Select>
+                <Select value={clienteId} onChange={(e) => setClienteId(e.target.value ? Number(e.target.value) : "")} className="w-48">
+                  <option value="">Tutto il portafoglio</option>
+                  {clienti.map((c) => <option key={c.id} value={c.id}>{c.ragioneSociale}</option>)}
+                </Select>
+              </>
+            )}
             <MultiSelectFornitori fornitori={fornitori} selezionati={fornitoreIds} onChange={setFornitoreIds} className="w-44" />
             <MultiSelectMesi mesiSelezionati={mesi} onChange={setMesi} className="w-40" />
             <Select value={anno} onChange={(e) => setAnno(Number(e.target.value))} className="w-24">
@@ -176,9 +185,9 @@ export default function DashboardPage() {
         <LoadingBlock />
       ) : kpi ? (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${soloProprioFatturato ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
             <KpiCard titolo="Fatturato mensile" kpi={kpi.fatturatoMensile} formatta={formattaValuta} />
-            <KpiCard titolo="Nuovi clienti" kpi={kpi.nuoviClienti} formatta={(v) => v.toFixed(0)} />
+            {!soloProprioFatturato && <KpiCard titolo="Nuovi clienti" kpi={kpi.nuoviClienti} formatta={(v) => v.toFixed(0)} />}
             <KpiCard titolo="Ordine medio" kpi={kpi.ordineMedio} formatta={formattaValuta} />
             <KpiCard titolo="Cucine vendute" kpi={kpi.cucineVendute} formatta={(v) => v.toFixed(0)} />
           </div>
@@ -205,6 +214,8 @@ export default function DashboardPage() {
             </div>
           </Card>
 
+          {!soloProprioFatturato && (
+          <>
           <Card className="mt-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium text-zinc-700">
@@ -323,6 +334,8 @@ export default function DashboardPage() {
               </div>
             )}
           </Card>
+          </>
+          )}
         </>
       ) : null}
     </div>

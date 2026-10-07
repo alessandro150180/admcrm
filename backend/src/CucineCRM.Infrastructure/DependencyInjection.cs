@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IOrdineService, OrdineService>();
         services.AddScoped<IFornitoreService, FornitoreService>();
+        services.AddScoped<IAccountClientiService, AccountClientiService>();
         services.AddScoped<IAttivitaService, AttivitaService>();
         services.AddScoped<INotaClienteService, NotaClienteService>();
         services.AddScoped<IObiettivoVenditaService, ObiettivoVenditaService>();
@@ -105,6 +106,12 @@ public static class DependencyInjection
             // ruolo è applicato globalmente in Program.cs, non qui.
             options.AddPolicy("TuttiIRuoli", policy =>
                 policy.RequireRole("Amministratore", "DirettoreCommerciale", "AreaManager", "Agente", "Visualizzatore"));
+
+            // Come TuttiIRuoli ma include anche gli account Cliente. Usata SOLO sugli endpoint che un
+            // cliente può chiamare (proprio fatturato/ordini, elenco fornitori, cambio password).
+            // TuttiIRuoli resta volutamente senza Cliente: ogni nuovo endpoint è chiuso ai clienti di default.
+            options.AddPolicy("ConClienti", policy =>
+                policy.RequireRole("Amministratore", "DirettoreCommerciale", "AreaManager", "Agente", "Visualizzatore", "Cliente"));
         });
 
         return services;
