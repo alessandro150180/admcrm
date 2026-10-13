@@ -53,10 +53,15 @@ public class ImportazioneFatturatoMensileService : IImportazioneFatturatoMensile
             .GroupBy(c => c.CodiceCliente, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
+        // Gli ordini importati prima dell'introduzione dei fornitori hanno il riferimento di vecchio formato
+        // ("FATT-{cliente}-{anno}{mese}", senza fornitore). Per il confronto li si porta al formato attuale
+        // usando il fornitore che l'ordine ha già in database: così un nuovo import dello stesso file non li
+        // ricrea come ordini nuovi (raddoppiando il fatturato).
         var riferimentiEsistenti = new HashSet<string>(
-            await _queryExecutor.ToListAsync(_unitOfWork.Ordini.Query()
+            (await _queryExecutor.ToListAsync(_unitOfWork.Ordini.Query()
                 .Where(o => o.RiferimentoEsterno != null)
-                .Select(o => o.RiferimentoEsterno!), ct),
+                .Select(o => new { Riferimento = o.RiferimentoEsterno!, o.FornitoreId }), ct))
+                .Select(o => NormalizzaRiferimento(o.Riferimento, o.FornitoreId)),
             StringComparer.OrdinalIgnoreCase);
 
         var log = new List<RigaImportLogDto>();
@@ -101,7 +106,7 @@ public class ImportazioneFatturatoMensileService : IImportazioneFatturatoMensile
 
                 // Include il fornitore nel riferimento: lo stesso cliente/mese può avere fatturato
                 // separato per più fornitori (Nobilia, NobiSmart, ...), senza scontrarsi sull'univocità.
-                var riferimento = $"FATT-F{fornitoreId}-{codiceCliente}-{anno}{mese:D2}";
+                var riferimento = CostruisciRiferimento(fornitoreId, codiceCliente, anno, mese);
                 if (riferimentiEsistenti.Contains(riferimento))
                 {
                     meseDuplicati++;
@@ -195,15 +200,15 @@ public class ImportazioneFatturatoMensileService : IImportazioneFatturatoMensile
 
     public async Task<int> EliminaFatturatoMensileAsync(int anno, int mese, int fornitoreId, CancellationToken ct = default)
     {
-        // Prefisso "FATT-F{fornitoreId}-" + suffisso "-{anno}{mese}" identificano univocamente gli
-        // ordini sintetici di quel fornitore/periodo (assegnati in fase di import, vedi sopra): non
-        // toccano eventuali ordini manuali o di altri fornitori nello stesso mese.
-        var prefisso = $"FATT-F{fornitoreId}-";
+        // Il prefisso "FATT-" e il suffisso "-{anno}{mese}" riconoscono gli ordini sintetici di questo import,
+        // e il fornitore è quello salvato sull'ordine: vale sia per i riferimenti nuovi ("FATT-F1-...") sia per
+        // quelli di vecchio formato, e non tocca ordini manuali o di altri fornitori nello stesso mese.
         var suffisso = $"-{anno}{mese:D2}";
 
         var daEliminare = await _queryExecutor.ToListAsync(_unitOfWork.Ordini.Query()
             .Where(o => o.RiferimentoEsterno != null
-                && o.RiferimentoEsterno.StartsWith(prefisso)
+                && o.FornitoreId == fornitoreId
+                && o.RiferimentoEsterno.StartsWith("FATT-")
                 && o.RiferimentoEsterno.EndsWith(suffisso)), ct);
 
         foreach (var ordine in daEliminare)
@@ -213,6 +218,20 @@ public class ImportazioneFatturatoMensileService : IImportazioneFatturatoMensile
             await _unitOfWork.SaveChangesAsync(ct);
 
         return daEliminare.Count;
+    }
+
+    private static string CostruisciRiferimento(int fornitoreId, string codiceCliente, int anno, int mese) =>
+        $"FATT-F{fornitoreId}-{codiceCliente}-{anno}{mese:D2}";
+
+    /// <summary>Porta un riferimento di vecchio formato ("FATT-{cliente}-{anno}{mese}") al formato attuale, usando il
+    /// fornitore dell'ordine. Quelli già nel formato attuale restano invariati.</summary>
+    private static string NormalizzaRiferimento(string riferimento, int fornitoreId)
+    {
+        var prefissoAttuale = $"FATT-F{fornitoreId}-";
+        if (riferimento.StartsWith(prefissoAttuale, StringComparison.OrdinalIgnoreCase) || !riferimento.StartsWith("FATT-", StringComparison.OrdinalIgnoreCase))
+            return riferimento;
+
+        return prefissoAttuale + riferimento["FATT-".Length..];
     }
 
     private static (int Anno, int Mese)? ProvaEstraiMeseAnno(string intestazione)
@@ -234,9 +253,13 @@ public class ImportazioneFatturatoMensileService : IImportazioneFatturatoMensile
         return null;
     }
 
+    // Le celle numeriche arrivano dal lettore con il punto decimale ("25003.45"); un testo con la virgola
+    // ("25003,45", cella salvata come testo) è invece scritto all'italiana. Con la sola cultura invariante la
+    // virgola verrebbe letta come separatore delle migliaia e l'importo risulterebbe cento volte più grande.
     private static bool TryParseImporto(string testo, out decimal importo) =>
-        decimal.TryParse(testo, NumberStyles.Number, CultureInfo.InvariantCulture, out importo)
-        || decimal.TryParse(testo, NumberStyles.Number, CultureInfo.GetCultureInfo("it-IT"), out importo);
+        testo.Contains(',')
+            ? decimal.TryParse(testo, NumberStyles.Number, CultureInfo.GetCultureInfo("it-IT"), out importo)
+            : decimal.TryParse(testo, NumberStyles.Number, CultureInfo.InvariantCulture, out importo);
 
     /// <summary>Come per l'import anagrafiche: un valore &lt;=1 è trattato come frazione (0,07 = 7%).</summary>
     private static decimal ParsaPercentualeProvvigione(string testo)
